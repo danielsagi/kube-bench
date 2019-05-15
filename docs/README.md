@@ -257,15 +257,30 @@ tests:
     ...
 ```
 
+A `test_item` compares the output of the audit command and keywords using the
+`set` and `compare` fields.
 
+```
+  test_items:
+  - flag: "--anonymous-auth"
+    compare:
+      op: eq
+      value: false
+    set: true
+```
 
-`compare` dictates the criteria that the kewords extracted from the output of
-`audit` by `flag` or `path` must meet to pass a check. `compare` has two fields,
-`op` and `value`.
+`set` checks if a keyword is present in the audit command or not. The possible
+values `set` are true and false. If `set` is true, `kube-bench` checks that the
+keyword is present in the audit and the check fails if it is not. If `set` is 
+false, `kube-bench` checks that the keyword is not present in the output and 
+the check fails if it is present.
 
-`op` compares the actual keyword we got with `flag` or `path` to an expected
-`value` according to the CIS Kubernetes Benchmark. If the the result of the
-comparison is true, the check `PASS`es, if it is false, the check `FAIL`s.
+`compare` has two fields `op` and `value`. `op` specifies which operation to 
+use in our comparison, and `value` specifies what we are comparing to the
+output of the audit command.
+
+> To use `compare`, `set` must true. The comparison will be ignored if `set` is
+> false
 
 The `op`erations currently supported by `kube-bench` are:
 - `eq`: tests if the keyword is equal to the compared value.
@@ -277,37 +292,40 @@ The `op`erations currently supported by `kube-bench` are:
 - `has`: tests if the keyword contains the compared value.
 - `nothave`: tests if the keyword does not contain the compared value.
 
-Below is an example with comparison.
-
-```
-id: 1.1.1
-text: "Ensure that the --anonymous-auth argument is set to false (Not Scored)"
-audit: "ps -ef | grep kube-apiserver | grep -v grep"
-tests:
-  test_items:
-  - flag: "--anonymous-auth" # check the output of ps for this flag
-    compare:
-      op: eq                 # the value of the flag must be equal to 
-      value: false           # false.
-scored: false
-```
-
-
 ### Variables
 
-Kubernetes config and binary file locations and names can vary from installation to installation, so these are configurable in the `cfg/config.yaml` file.
-For each type of node (*master*, *node* or *federated*) there is a list of components, and for each component there is a set of binaries (*bins*) and config files (*confs*) that kube-bench will look for (in the order they are listed). If your installation uses a different binary name or config file location for a Kubernetes component, you can add it to `cfg/config.yaml`.
+Kubernetes config and binary file locations and names can vary from 
+installation to installation, so these are configurable in the 
+`cfg/config.yaml` file.
 
-* **bins** - If there is a *bins* list for a component, at least one of these binaries must be running. The tests will consider the parameters for the first binary in the list found to be running.
-* **podspecs** - From version 1.2.0 of the benchmark (tests for Kubernetes 1.8), the remediation instructions were updated to assume that the configuration for several kubernetes components is defined in a pod YAML file, and podspec settings define where to look for that configuration.
-* **confs** - If one of the listed config files is found, this will be considered for the test. Tests can continue even if no config file is found. If no file is found at any of the listed locations, and a *defaultconf* location is given for the component, the test will give remediation advice using the *defaultconf* location.
-* **unitfiles** - From version 1.2.0 of the benchmark  (tests for Kubernetes 1.8), the remediation instructions were updated to assume that kubelet configuration is defined in a service file, and this setting defines where to look for that configuration.
+For each type of node (*master*, *node* or *federated*) there is a list of 
+components, and for each component there is a set of binaries (*bins*) and 
+config files (*confs*) that kube-bench will look for (in the order they are 
+listed). If your installation uses a different binary name or config file 
+location for a Kubernetes component, you can add it to `cfg/config.yaml`.
 
+* **bins** - If there is a *bins* list for a component, at least one of these 
+  binaries must be running. The tests will consider the parameters for the 
+  first binary in the list found to be running.
+* **podspecs** - From version 1.2.0 of the benchmark (tests for Kubernetes 
+  1.8), the remediation instructions were updated to assume that the 
+  configuration for several kubernetes components is defined in a pod YAML 
+  file, and podspec settings define where to look for that configuration.
+* **confs** - If one of the listed config files is found, this will be 
+  considered for the test. Tests can continue even if no config file is found. 
+  If no file is found at any of the listed locations, and a *defaultconf* 
+  location is given for the component, the test will give remediation advice 
+  using the *defaultconf* location.
+* **unitfiles** - From version 1.2.0 of the benchmark  (tests for Kubernetes 
+  1.8), the remediation instructions were updated to assume that kubelet 
+  configuration is defined in a service file, and this setting defines where 
+  to look for that configuration.
 
 ### Versions and distributions
-`kube-bench` supports benchmark specs for multiple Kubernetes versions and distributions.
-The supported versions and distributions can be found under the `cfg` directory of the
-root directory.
+
+`kube-bench` supports benchmark specs for multiple Kubernetes versions and 
+distributions. The supported versions and distributions can be found under the
+`cfg` directory of the root directory.
 
 To see a list of supported kubernetes versions and distributions, run
 ```shell
@@ -323,59 +341,7 @@ ocp-3.10
 ```
 
 The versions listed in `cfg` are specifically kubernetes versions not CIS
-Kubernetes Benchmark versions and they are not the same. Please refer to the version
-matrix below to see how kubernetes versions and release map to CIS Kubernete Benchmarks.
-
-
-### Test config YAML representation
-The tests are represented as YAML documents (installed by default into ./cfg).
-
-An example is as listed below:
-```
----
-controls:
-id: 1
-text: "Master Checks"
-type: "master"
-groups:
-- id: 1.1
-  text: "Kube-apiserver"
-  checks:
-    - id: 1.1.1
-      text: "Ensure that the --allow-privileged argument is set (Scored)"
-      audit: "ps -ef | grep kube-apiserver | grep -v grep"
-      tests:
-      bin_op: or
-      test_items:
-      - flag: "--allow-privileged"
-        set: true
-      - flag: "--some-other-flag"
-        set: false
-      remediation: "Edit the /etc/kubernetes/config file on the master node and set the KUBE_ALLOW_PRIV parameter to '--allow-privileged=false'"
-      scored: true
-```
-
-Recommendations (called `checks` in this document) can run on Kubernetes Master, Node or Federated API Servers.
-Checks are organized into `groups` which share similar controls (things to check for) and are grouped together in the section of the CIS Kubernetes document.
-These groups are further organized under `controls` which can be of the type `master`, `node` or `federated apiserver` to reflect the various Kubernetes node types.
-
-
-# Roadmap
-Going forward we plan to release updates to kube-bench to add support for new releases of the Benchmark, which in turn we can anticipate being made for each new Kubernetes release.
-
-We welcome PRs and issue reports.
-
-# Testing locally with kind
-
-Our makefile contains targets to test your current version of kube-bench inside a [Kind](https://kind.sigs.k8s.io/) cluster. This can be very handy if you don't want to run a real kubernetes cluster for development purpose.
-
-First you'll need to create the cluster using `make kind-test-cluster` this will create a new cluster if it cannot be found on your machine. By default the cluster is named `kube-bench` but you can change the name by using the environment variable `KIND_PROFILE`.
-
-*If kind cannot be found on your system the target will try to install it using `go get`*
-
-Next you'll have to build the kube-bench docker image using `make build-docker`, then we will be able to push the docker image to the cluster using `make kind-push`.
-
-Finally we can use the `make kind-run` target to run the current version of kube-bench in the cluster and follow the logs of pods created. (Ctrl+C to exit)
-
-Everytime you want to test a change, you'll need to rebuild the docker image and push it to cluster before running it again. ( `make build-docker kind-push kind-run` )
+Kubernetes Benchmark versions and they are not the same. Please refer to the 
+version matrix below to see how kubernetes versions and release map to CIS 
+Kubernetes Benchmarks.
 

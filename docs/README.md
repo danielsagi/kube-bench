@@ -292,34 +292,62 @@ The `op`erations currently supported by `kube-bench` are:
 - `has`: tests if the keyword contains the compared value.
 - `nothave`: tests if the keyword does not contain the compared value.
 
-### Variables
+### Configuration and Variables
 
-Kubernetes config and binary file locations and names can vary from 
-installation to installation, so these are configurable in the 
+`kube-bench` checks configuration files and arguments to binaries for
+conformance to the CIS Kubernetes Benchmark. To do this we have to know the
+locations of kubernetes configuration files and the process names the
+components are running under.
+
+However Kubernetes component configuration and binary file locations and names 
+vary based on the cluster was deployment methods and the kubernetes
+distribution used.
+
+For this reason, the locations of these files are configurable by editing the 
 `cfg/config.yaml` file.
 
-For each type of node (*master*, *node* or *federated*) there is a list of 
-components, and for each component there is a set of binaries (*bins*) and 
-config files (*confs*) that kube-bench will look for (in the order they are 
-listed). If your installation uses a different binary name or config file 
-location for a Kubernetes component, you can add it to `cfg/config.yaml`.
+The `cfg/config.yaml` is a global configuration file
+which can be overriden on a per version (or distribution) basis, by editing
+the `config.yaml` file in the desired versions directory.
 
-* **bins** - If there is a *bins* list for a component, at least one of these 
+For example, the kube-apiserver in Redhat OCP distribution is run as 
+`hypershift openshift-kube-apiserver` instead of the default `kube-apiserver`.
+This difference can be specified by editing `cfg/ocp-3.10/config.yaml` as
+follows:
+
+The configuration file `cfg/config.yaml` is structured as follows:
+
+```
+nodetype
+  |-- components
+    |-- component1
+  |
+  |-- component1
+    |-- bins
+    |-- defaultbin (optional)
+    |-- confs
+    |-- defaultconf (optional)
+    |-- svcs
+    |-- defaultsvc (optional)
+    |-- kubeconfig
+    |-- defaultkubeconfig (optional)
+```
+    
+The following are the main configurations items:
+
+* Binary files - If there is a *bins* list for a component, at least one of these 
   binaries must be running. The tests will consider the parameters for the 
   first binary in the list found to be running.
-* **podspecs** - From version 1.2.0 of the benchmark (tests for Kubernetes 
-  1.8), the remediation instructions were updated to assume that the 
-  configuration for several kubernetes components is defined in a pod YAML 
-  file, and podspec settings define where to look for that configuration.
-* **confs** - If one of the listed config files is found, this will be 
+* Configuration files - If one of the listed config files is found, this will be 
   considered for the test. Tests can continue even if no config file is found. 
   If no file is found at any of the listed locations, and a *defaultconf* 
   location is given for the component, the test will give remediation advice 
   using the *defaultconf* location.
-* **unitfiles** - From version 1.2.0 of the benchmark  (tests for Kubernetes 
+* Service files - From version 1.2.0 of the benchmark  (tests for Kubernetes 
   1.8), the remediation instructions were updated to assume that kubelet 
   configuration is defined in a service file, and this setting defines where 
   to look for that configuration.
+* Kubeconfig files
 
 ### Versions and distributions
 
